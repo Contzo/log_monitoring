@@ -1,6 +1,7 @@
 import { DataSource, type DataSourceOptions } from 'typeorm';
 import { config as loadEnv } from 'dotenv';
-import { Cursor } from './cursor/cursor.entity.js';
+import { LogFile } from './log_file/log_file.entity.js';
+import { Server } from './server/server.entity.js';
 
 function safeReadEnv(key: string): string {
   const value = process.env[key];
@@ -13,7 +14,7 @@ function safeReadEnv(key: string): string {
 loadEnv({ path: `.env.${safeReadEnv('NODE_ENV')}`, quiet: true });
 
 const dataSourceObjectBase: Pick<DataSourceOptions, 'entities'> = {
-  entities: [Cursor],
+  entities: [LogFile, Server],
 };
 
 function getDataSourceOptions(): DataSourceOptions {

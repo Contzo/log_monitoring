@@ -1,23 +1,49 @@
-import { Injectable } from '@nestjs/common';
-import { CursorService } from '../cursor/cursor.service.js';
-import { OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  OnApplicationBootstrap,
+  Inject,
+  BeforeApplicationShutdown,
+} from '@nestjs/common';
+import { LogFileService } from '../log_file/log_file.service.js';
+import { ServerConnectonInterface } from './poll.module.js';
+import { setTimeout } from 'timers/promises';
 
 @Injectable()
-export class PollService implements OnModuleInit {
-  constructor(private cursorsService: CursorService) {}
+export class PollService
+  implements OnApplicationBootstrap, BeforeApplicationShutdown
+{
+  constructor(
+    private logFileService: LogFileService,
+    @Inject('serverConnections')
+    private readonly serverConnectionsMap: Map<
+      string,
+      ServerConnectonInterface
+    >,
+  ) {}
 
-  onModuleInit() {
-    this.loop().catch((error) => console.log(error));
+  onApplicationBootstrap() {
+    this.serverConnectionsMap.forEach((_, key) =>
+      this.loop(key).catch((e) => console.log(e)),
+    );
+  }
+
+  beforeApplicationShutdown(_signal?: string) {
+    this.serverConnectionsMap.forEach((connection, _) =>
+      connection.abortController.abort(),
+    );
   }
 
   async pollCycle() {}
 
-  async loop() {
+  async loop(server_name: string) {
     // make a loop for each server
     while (true) {
       try {
         await this.pollCycle();
-        await new Promise((resolve) => setTimeout(resolve, 1000)); // make an abort controller for this
+        await setTimeout(1000, undefined, {
+          signal:
+            this.serverConnectionsMap.get(server_name)?.abortController.signal,
+        });
       } catch (error) {}
     }
   }

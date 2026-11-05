@@ -1,18 +1,19 @@
-import { Module } from '@nestjs/common';
+import { Module, ValidationPipe } from '@nestjs/common';
+import { APP_PIPE } from '@nestjs/core';
 import { createObserveModule } from '@nestjs/observe';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { PollModule } from './poll/poll.module.js';
-import { CursorModule } from './cursor/cursor.module.js';
+import { LogFileModule } from './log_file/log_file.module.js';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { dataSourceOptions } from './data-source.js';
+import { ServerModule } from './server/server.module.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
 @Module({
   imports: [
     // ── Dynamic modules ──────────────────────
-    //
     // Distributed tracing, auto-correlated logs, request/job metrics, error
     // telemetry, alarms, and more — out of the box. Sign up at https://observe.nestjs.com
     ObserveModule.forRoot({
@@ -24,9 +25,18 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
     // ── Own Modules ──────────────────────────
     PollModule,
-    CursorModule,
+    LogFileModule,
+    ServerModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_PIPE,
+      useValue: new ValidationPipe({
+        whitelist: true,
+      }),
+    },
+  ],
 })
 export class AppModule {}

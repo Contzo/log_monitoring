@@ -5,15 +5,14 @@ import {
   AfterInsert,
   AfterUpdate,
   CreateDateColumn,
+  ManyToOne,
 } from 'typeorm';
+import { Server } from '../server/server.entity.js';
 
 @Entity()
-export class Cursor {
+export class LogFile {
   @PrimaryGeneratedColumn()
   id: number;
-
-  @Column()
-  server: string;
 
   @Column()
   log_path: string;
@@ -26,6 +25,9 @@ export class Cursor {
 
   @CreateDateColumn()
   created_at: Date;
+
+  @ManyToOne(() => Server, (server) => server.files)
+  server: Server;
 
   @AfterInsert()
   logInsert() {
