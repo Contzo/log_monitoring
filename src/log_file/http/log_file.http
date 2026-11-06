@@ -1,0 +1,13 @@
+@host = http://localhost:3000
+
+
+### Add server
+POST {{host}}/log-file
+Content-Type: application/json
+
+{
+  "log_path": "var/log" ;
+  "inode": 543543;
+  "offset": 13;
+  "serverId": 1; 
+}

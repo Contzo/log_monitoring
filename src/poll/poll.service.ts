@@ -5,33 +5,17 @@ import {
   BeforeApplicationShutdown,
 } from '@nestjs/common';
 import { LogFileService } from '../log_file/log_file.service.js';
-import { ServerConnectonInterface } from './poll.module.js';
 import { setTimeout } from 'timers/promises';
 
 @Injectable()
 export class PollService
   implements OnApplicationBootstrap, BeforeApplicationShutdown
 {
-  constructor(
-    private logFileService: LogFileService,
-    @Inject('serverConnections')
-    private readonly serverConnectionsMap: Map<
-      string,
-      ServerConnectonInterface
-    >,
-  ) {}
+  constructor(private logFileService: LogFileService) {}
 
-  onApplicationBootstrap() {
-    this.serverConnectionsMap.forEach((_, key) =>
-      this.loop(key).catch((e) => console.log(e)),
-    );
-  }
+  onApplicationBootstrap() {}
 
-  beforeApplicationShutdown(_signal?: string) {
-    this.serverConnectionsMap.forEach((connection, _) =>
-      connection.abortController.abort(),
-    );
-  }
+  beforeApplicationShutdown(_signal?: string) {}
 
   async pollCycle() {}
 
@@ -40,10 +24,7 @@ export class PollService
     while (true) {
       try {
         await this.pollCycle();
-        await setTimeout(1000, undefined, {
-          signal:
-            this.serverConnectionsMap.get(server_name)?.abortController.signal,
-        });
+        await setTimeout(1000, undefined);
       } catch (error) {}
     }
   }

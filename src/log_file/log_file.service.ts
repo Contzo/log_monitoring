@@ -2,14 +2,17 @@ import { Injectable } from '@nestjs/common';
 import { LogFile } from './log_file.entity.js';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
+import { CreateLogFileDto } from './dtos/create-log-file.dto.js';
 
 @Injectable()
 export class LogFileService {
   constructor(
-    @InjectRepository(LogFile) private cursorRepository: Repository<LogFile>,
+    @InjectRepository(LogFile) private logFileRepository: Repository<LogFile>,
   ) {}
 
-  getCursor(cursor: Partial<LogFile>) {}
+  create(newLogFile: CreateLogFileDto) {
+    const entry = this.logFileRepository.create(newLogFile);
 
-  updateCursort(id: number) {}
+    return this.logFileRepository.save(entry);
+  }
 }

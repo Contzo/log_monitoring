@@ -6,16 +6,18 @@ import {
   AfterUpdate,
   CreateDateColumn,
   ManyToOne,
+  Index,
 } from 'typeorm';
 import { Server } from '../server/server.entity.js';
 
 @Entity()
+@Index(['server', 'log_path'], { unique: true })
 export class LogFile {
   @PrimaryGeneratedColumn()
   id: number;
 
   @Column()
-  log_path: string;
+  logPath: string;
 
   @Column()
   inode: number;
@@ -27,7 +29,7 @@ export class LogFile {
   created_at: Date;
 
   @ManyToOne(() => Server, (server) => server.files)
-  server: Server;
+  serverId: Server;
 
   @AfterInsert()
   logInsert() {

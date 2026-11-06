@@ -26,7 +26,7 @@ export class Server {
   @CreateDateColumn()
   created_at: Date;
 
-  @OneToMany(() => LogFile, (logFile) => logFile.server)
+  @OneToMany(() => LogFile, (logFile) => logFile.serverId)
   files: LogFile[];
 
   @AfterInsert()

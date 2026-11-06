@@ -8,7 +8,7 @@ import { ServerDTO } from './dtos/server.dto.js';
 @Serialize(ServerDTO)
 export class ServerController {
   constructor(private readonly serverService: ServerService) {}
-  @Post('create')
+  @Post()
   addServer(@Body() newServer: CreateServerDTO) {
     return this.serverService.create(newServer);
   }
