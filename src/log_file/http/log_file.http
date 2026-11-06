@@ -3,11 +3,9 @@
 
 ### Add server
 POST {{host}}/log-file
-Content-Type: application/json
+sontent-Type: application/json
 
 {
-  "log_path": "var/log" ;
-  "inode": 543543;
-  "offset": 13;
-  "serverId": 1; 
+  "logPath": "var/log/app.log/fdf/fdfa" ,
+  "serverName": "nms_sabareni"
 }

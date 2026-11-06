@@ -6,6 +6,7 @@ import {
   AfterUpdate,
   CreateDateColumn,
   OneToMany,
+  type Relation,
 } from 'typeorm';
 import { LogFile } from '../log_file/log_file.entity.js';
 
@@ -15,19 +16,19 @@ export class Server {
   id: number;
 
   @Column({ unique: true })
-  server_name: string;
+  serverName: string;
 
   @Column({ unique: true })
-  server_ip: string;
+  serverIp: string;
 
   @Column()
-  sshKey_path: string;
+  sshKeyPath: string;
 
   @CreateDateColumn()
-  created_at: Date;
+  createdAt: Date;
 
-  @OneToMany(() => LogFile, (logFile) => logFile.serverId)
-  files: LogFile[];
+  @OneToMany(() => LogFile, (logFile) => logFile.server)
+  files: Relation<LogFile[]>;
 
   @AfterInsert()
   logInsert() {

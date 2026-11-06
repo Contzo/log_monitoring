@@ -4,11 +4,11 @@ export class ServerDTO {
   id: number;
 
   @Expose()
-  server_name: string;
+  serverName: string;
 
   @Expose()
-  server_ip: string;
+  serverIp: string;
 
   @Expose()
-  created_at: Date;
+  createdAt: Date;
 }

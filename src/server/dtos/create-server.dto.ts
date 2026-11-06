@@ -3,13 +3,13 @@ import { IsString, IsNotEmpty, IsIP } from 'class-validator';
 export class CreateServerDTO {
   @IsString()
   @IsNotEmpty()
-  server_name: string;
+  serverName: string;
 
   @IsIP()
   @IsNotEmpty()
-  server_ip: string;
+  serverIp: string;
 
   @IsString()
   @IsNotEmpty()
-  sshKey_path: string;
+  sshKeyPath: string;
 }

@@ -2,13 +2,13 @@
 
 
 ### Add server
-POST {{host}}/server/create
+POST {{host}}/server
 Content-Type: application/json
 
 {
-  "server_name": "nms_sabareni", 
-  "server_ip": "172.19.3.25", 
-  "sshKey_path": "log/var"
+  "serverName": "nms_sabareni", 
+  "serverIp": "172.19.3.25", 
+  "sshKeyPath": "log/var"
 }
 
 

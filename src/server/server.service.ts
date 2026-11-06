@@ -1,6 +1,6 @@
 import { Injectable, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, QueryFailedError } from 'typeorm';
+import { Repository, QueryFailedError, FindOptionsRelations } from 'typeorm';
 import { Server } from './server.entity.js';
 import { CreateServerDTO } from './dtos/create-server.dto.js';
 
@@ -30,5 +30,9 @@ export class ServerService {
 
   findServers() {
     return this.serverRepository.find();
+  }
+
+  findOne(serverName: string, relations?: FindOptionsRelations<Server>) {
+    return this.serverRepository.findOne({ where: { serverName }, relations });
   }
 }

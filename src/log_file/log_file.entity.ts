@@ -7,11 +7,12 @@ import {
   CreateDateColumn,
   ManyToOne,
   Index,
+  type Relation,
 } from 'typeorm';
 import { Server } from '../server/server.entity.js';
 
 @Entity()
-@Index(['server', 'log_path'], { unique: true })
+@Index(['server', 'logPath'], { unique: true })
 export class LogFile {
   @PrimaryGeneratedColumn()
   id: number;
@@ -19,25 +20,15 @@ export class LogFile {
   @Column()
   logPath: string;
 
-  @Column()
+  @Column({ default: 1000 })
   inode: number;
 
-  @Column()
-  offset: number;
+  @Column({ default: 0 })
+  cursor: number;
 
   @CreateDateColumn()
-  created_at: Date;
+  createdAt: Date;
 
   @ManyToOne(() => Server, (server) => server.files)
-  serverId: Server;
-
-  @AfterInsert()
-  logInsert() {
-    console.log('New cursor inserted: ' + this.id);
-  }
-
-  @AfterUpdate()
-  logUpdate() {
-    console.log(`Cursor ${this.id} updated to ${this.offset}`);
-  }
+  server: Relation<Server>;
 }
