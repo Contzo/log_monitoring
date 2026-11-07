@@ -1,11 +1,27 @@
 @host = http://localhost:3000
 
 
-### Add server
+### Add file
 POST {{host}}/log-file
 sontent-Type: application/json
 
 {
-  "logPath": "var/log/app.log/fdf/fdfa" ,
+  "logPath": "var/log/app.log/fdf/fdfa/test3.log" ,
   "serverName": "nms_sabareni"
 }
+
+### Enable log file monitoring
+PATCH {{host}}/log-file/enable/3
+sontent-Type: application/json
+
+### Disable log file monitoring
+PATCH {{host}}/log-file/disable/1000
+sontent-Type: application/json
+
+
+
+
+### Get all the log files 
+GET {{host}}/log-file
+sontent-Type: application/json
+

@@ -2,14 +2,15 @@ import {
   Column,
   Entity,
   PrimaryGeneratedColumn,
-  AfterInsert,
-  AfterUpdate,
   CreateDateColumn,
+  UpdateDateColumn,
   ManyToOne,
+  JoinColumn,
   Index,
   type Relation,
 } from 'typeorm';
 import { Server } from '../server/server.entity.js';
+import { bigintToNumber } from '../common/transformers.js';
 
 @Entity()
 @Index(['server', 'logPath'], { unique: true })
@@ -20,15 +21,32 @@ export class LogFile {
   @Column()
   logPath: string;
 
-  @Column({ default: 1000 })
-  inode: number;
+  @Column({ default: true })
+  isEnabled: boolean;
 
-  @Column({ default: 0 })
-  cursor: number;
+  // ── Read cursor ──────────────────────────
+  // Opaque file identity: compared for equality only, never arithmetic.
+  @Column({ type: String, nullable: true })
+  inode: string | null;
+
+  // Bytes of this file already consumed and stored.
+  @Column({ type: 'bigint', default: 0, transformer: bigintToNumber })
+  byteOffset: number;
 
   @CreateDateColumn()
   createdAt: Date;
 
-  @ManyToOne(() => Server, (server) => server.files)
+  @UpdateDateColumn()
+  updatedAt: Date;
+
+  // ── Owning server ────────────────────────
+  @Column()
+  readonly serverId: number;
+
+  @ManyToOne(() => Server, (server) => server.files, {
+    nullable: false,
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'serverId' })
   server: Relation<Server>;
 }

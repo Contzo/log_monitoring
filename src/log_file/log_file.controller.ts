@@ -1,4 +1,4 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, Patch } from '@nestjs/common';
 import { LogFileService } from './log_file.service.js';
 import { CreateLogFileDto } from './dtos/create-log-file.dto.js';
 import { Serialize } from '../interceptors/serialize.interceptor.js';
@@ -12,5 +12,23 @@ export class LogFileController {
   @Post()
   async create(@Body() newLogFile: CreateLogFileDto) {
     return this.logFileService.create(newLogFile);
+  }
+
+  // ── GET log-file ─────────────────────────
+  @Get()
+  getFiles() {
+    return this.logFileService.findFiles();
+  }
+
+  // ── Patch log-file/enable/:id ─────────────
+  @Patch('/enable/:id')
+  enableLogFileMonitor(@Param('id') id: string) {
+    return this.logFileService.enableFileMonitoring(parseInt(id));
+  }
+
+  // ── Patch log-file/disable/:id ─────────────
+  @Patch('/disable/:id')
+  disableLogFileMonitor(@Param('id') id: string) {
+    return this.logFileService.disableFileMonitoring(parseInt(id));
   }
 }

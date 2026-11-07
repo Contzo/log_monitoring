@@ -2,9 +2,8 @@ import {
   Column,
   Entity,
   PrimaryGeneratedColumn,
-  AfterInsert,
-  AfterUpdate,
   CreateDateColumn,
+  UpdateDateColumn,
   OneToMany,
   type Relation,
 } from 'typeorm';
@@ -21,22 +20,36 @@ export class Server {
   @Column({ unique: true })
   serverIp: string;
 
+  // ── SSH connection ───────────────────────
+  @Column()
+  sshUser: string;
+
+  @Column({ default: 22 })
+  sshPort: number;
+
   @Column()
   sshKeyPath: string;
+
+  // ── Poller control ───────────────────────
+  @Column({ default: true })
+  isEnabled: boolean;
+
+  // ── Poller status (written by the poll loop) ──
+  @Column({ type: Date, nullable: true })
+  lastSuccessAt: Date | null;
+
+  @Column({ type: Date, nullable: true })
+  lastErrorAt: Date | null;
+
+  @Column({ type: String, nullable: true })
+  lastError: string | null;
 
   @CreateDateColumn()
   createdAt: Date;
 
+  @UpdateDateColumn()
+  updatedAt: Date;
+
   @OneToMany(() => LogFile, (logFile) => logFile.server)
   files: Relation<LogFile[]>;
-
-  @AfterInsert()
-  logInsert() {
-    console.log('New server added: ' + this.id);
-  }
-
-  @AfterUpdate()
-  logUpdate() {
-    console.log(`Server ${this.id} updated`);
-  }
 }

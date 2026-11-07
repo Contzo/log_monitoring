@@ -1,4 +1,4 @@
-import { Expose, Transform } from 'class-transformer';
+import { Expose } from 'class-transformer';
 export class LogFileDTO {
   @Expose()
   id: number;
@@ -7,11 +7,16 @@ export class LogFileDTO {
   @Expose()
   inode: number;
   @Expose()
-  cursor: number;
+  byteOffset: number;
   @Expose()
   createdAt: Date;
 
   @Expose()
-  @Transform(({ obj }) => obj.server.id)
-  serveId: number;
+  serverId: number;
+
+  @Expose()
+  isEnabled: boolean;
+
+  @Expose()
+  updatedAt: Date;
 }

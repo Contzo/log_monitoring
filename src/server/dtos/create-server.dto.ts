@@ -12,4 +12,8 @@ export class CreateServerDTO {
   @IsString()
   @IsNotEmpty()
   sshKeyPath: string;
+
+  @IsString()
+  @IsNotEmpty()
+  sshUser: string;
 }

@@ -1,8 +1,9 @@
-import { Injectable, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, QueryFailedError, FindOptionsRelations } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Server } from './server.entity.js';
 import { CreateServerDTO } from './dtos/create-server.dto.js';
+import { handleDbError } from '../common/db-errors.js';
 
 @Injectable()
 export class ServerService {
@@ -17,14 +18,7 @@ export class ServerService {
     try {
       return await this.serverRepository.save(enitty);
     } catch (e) {
-      console.log(e);
-      if (
-        e instanceof QueryFailedError &&
-        e.driverError.code === 'SQLITE_CONSTRAINT_UNIQUE'
-      ) {
-        throw new ConflictException('Server name or ip aleady monitored');
-      }
-      throw e;
+      handleDbError(e, 'Server already monitored');
     }
   }
 
@@ -32,7 +26,15 @@ export class ServerService {
     return this.serverRepository.find();
   }
 
-  findOne(serverName: string, relations?: FindOptionsRelations<Server>) {
-    return this.serverRepository.findOne({ where: { serverName }, relations });
+  findOne(serverName: string) {
+    return this.serverRepository.findOne({ where: { serverName } });
+  }
+
+  async findOneOrFail(serverName: string) {
+    const server = await this.serverRepository.findOne({
+      where: { serverName },
+    });
+    if (!server) throw new NotFoundException('Server not monitored');
+    return server;
   }
 }

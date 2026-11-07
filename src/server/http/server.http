@@ -8,7 +8,8 @@ Content-Type: application/json
 {
   "serverName": "nms_sabareni", 
   "serverIp": "172.19.3.25", 
-  "sshKeyPath": "log/var"
+  "sshKeyPath": "log/var",
+  "sshUser": "contzo"
 }
 
 

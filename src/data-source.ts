@@ -3,7 +3,7 @@ import { config as loadEnv } from 'dotenv';
 import { LogFile } from './log_file/log_file.entity.js';
 import { Server } from './server/server.entity.js';
 
-function safeReadEnv(key: string): string {
+export function safeReadEnv(key: string): string {
   const value = process.env[key];
   if (!value) {
     throw new Error(`Missing env variable ${key}`);
