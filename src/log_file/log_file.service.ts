@@ -11,39 +11,16 @@ import { CreateLogFileDto } from './dtos/create-log-file.dto.js';
 import { ServerService } from '../server/server.service.js';
 import { handleDbError } from '../common/db-errors.js';
 import { setTimeout } from 'timers/promises';
-
-export type PollLoops = Map<
-  number,
-  { abortPollCycle: AbortController; donePollCycle: Promise<void> }
->;
+import { PollService } from '../poll/poll.service.js';
 
 @Injectable()
-export class LogFileService
-  implements OnApplicationBootstrap, BeforeApplicationShutdown
-{
-  loops: PollLoops;
+export class LogFileService {
   constructor(
     @InjectRepository(LogFile) private logFileRepository: Repository<LogFile>,
     private readonly serverService: ServerService,
-  ) {
-    this.loops = new Map();
-  }
+    private readonly pollService: PollService,
+  ) {}
 
-  async onApplicationBootstrap() {
-    const enabledFiles = await this.logFileRepository.find({
-      where: { isEnabled: true },
-    });
-    enabledFiles.forEach((logFile) => this.startLoop(logFile.id));
-  }
-
-  async beforeApplicationShutdown() {
-    console.log(
-      '----------App shutting down: La munca ortodocsilor--------------',
-    );
-    const running = [...this.loops.values()];
-    running.forEach((loop) => loop.abortPollCycle.abort());
-    await Promise.allSettled(running.map(({ donePollCycle }) => donePollCycle));
-  }
   async create(newLogFile: CreateLogFileDto) {
     const { serverName, ...fields } = newLogFile;
     const relatedServer = await this.serverService.findOneOrFail(serverName);
@@ -74,52 +51,15 @@ export class LogFileService
     const logFile = await this.findOne(id);
     logFile.isEnabled = true;
     await this.logFileRepository.save(logFile);
-    this.startLoop(logFile.id);
+    this.pollService.startLoop(logFile.id);
     return logFile;
   }
 
   async disableFileMonitoring(id: number) {
     const logFile = await this.findOne(id);
     logFile.isEnabled = false;
-    this.stopLoop(logFile.id);
+    this.pollService.stopLoop(logFile.id);
     await this.logFileRepository.save(logFile);
     return logFile;
-  }
-
-  poolCycle(id: number) {
-    console.log(`Executed pool for file: ${id}`);
-  }
-
-  private startLoop(id: number) {
-    if (this.loops.has(id)) return; // loop already running
-    const abortPollCycle = new AbortController();
-    const donePollCycle = this.runLoop(id, abortPollCycle).finally(() => {
-      if (this.loops.get(id)?.abortPollCycle === abortPollCycle)
-        this.loops.delete(id);
-    });
-    this.loops.set(id, { abortPollCycle, donePollCycle });
-  }
-
-  private async runLoop(id: number, abortController: AbortController) {
-    const { signal } = abortController;
-    try {
-      while (!signal.aborted) {
-        this.poolCycle(id);
-        await setTimeout(1000, undefined, { signal });
-      }
-    } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        console.log(`File monitoring for: ${id} aborted`);
-      } else {
-        console.log(`Poll loop for file ${id} failed`, error);
-      }
-    }
-  }
-
-  private stopLoop(id: number) {
-    const controller = this.loops.get(id);
-    if (!controller) return;
-    controller.abortPollCycle.abort();
-    this.loops.delete(id);
   }
 }

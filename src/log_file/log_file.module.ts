@@ -4,9 +4,10 @@ import { LogFile } from './log_file.entity.js';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { LogFileController } from './log_file.controller.js';
 import { ServerModule } from '../server/server.module.js';
+import { PollModule } from '../poll/poll.module.js';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([LogFile]), ServerModule],
+  imports: [TypeOrmModule.forFeature([LogFile]), ServerModule, PollModule],
   providers: [LogFileService],
   exports: [LogFileService],
   controllers: [LogFileController],
