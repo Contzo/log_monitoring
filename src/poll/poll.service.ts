@@ -14,7 +14,7 @@ export type PollLoops = Map<
 >;
 
 @Injectable()
-export class PollService {
+export class PollService implements OnApplicationBootstrap, BeforeApplicationShutdown {
   loops: PollLoops;
   constructor(
     @InjectRepository(LogFile)

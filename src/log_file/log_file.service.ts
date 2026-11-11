@@ -1,17 +1,11 @@
-import {
-  Injectable,
-  NotFoundException,
-  OnApplicationBootstrap,
-  BeforeApplicationShutdown,
-} from '@nestjs/common';
-import { LogFile } from './log_file.entity.js';
-import { Repository } from 'typeorm';
-import { InjectRepository } from '@nestjs/typeorm';
-import { CreateLogFileDto } from './dtos/create-log-file.dto.js';
-import { ServerService } from '../server/server.service.js';
-import { handleDbError } from '../common/db-errors.js';
-import { setTimeout } from 'timers/promises';
-import { PollService } from '../poll/poll.service.js';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { LogFile } from "./log_file.entity.js";
+import { Repository } from "typeorm";
+import { InjectRepository } from "@nestjs/typeorm";
+import { CreateLogFileDto } from "./dtos/create-log-file.dto.js";
+import { ServerService } from "../server/server.service.js";
+import { handleDbError } from "../common/db-errors.js";
+import { PollService } from "../poll/poll.service.js";
 
 @Injectable()
 export class LogFileService {
@@ -30,16 +24,13 @@ export class LogFileService {
       const newLogFile = await this.logFileRepository.save(entity);
       return newLogFile;
     } catch (error) {
-      handleDbError(
-        error,
-        `File ${fields.logPath} already monitored on server ${serverName}`,
-      );
+      handleDbError(error, `File ${fields.logPath} already monitored on server ${serverName}`);
     }
   }
 
   async findOne(id: number) {
     const logFile = await this.logFileRepository.findOne({ where: { id } });
-    if (logFile === null) throw new NotFoundException('Log file not found');
+    if (logFile === null) throw new NotFoundException("Log file not found");
     return logFile;
   }
 
