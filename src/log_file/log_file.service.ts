@@ -6,7 +6,6 @@ import { CreateLogFileDto } from "./dtos/create-log-file.dto.js";
 import { ServerService } from "../server/server.service.js";
 import { handleDbError } from "../common/db-errors.js";
 import { PollService } from "../poll/poll.service.js";
-
 @Injectable()
 export class LogFileService {
   constructor(
