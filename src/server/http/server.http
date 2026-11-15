@@ -7,13 +7,22 @@ Content-Type: application/json
 
 {
   "serverName": "nms_sabareni", 
-  "serverIp": "172.19.3.25", 
-  "sshKeyPath": "log/var",
-  "sshUser": "contzo"
+  "serverIp": "127.0.0.1", 
+  "password": "test",
+  "sshUser": "root", 
+  "sshPort": 2222
 }
 
 
 ### Get all the server
 GET {{host}}/server
+Content-Type: application/json
+
+### Enable the server
+PATCH {{host}}/server/enable/1
+Content-Type: application/json
+
+### Disable the server
+PATCH {{host}}/server/disable/1
 Content-Type: application/json
 

@@ -8,6 +8,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { dataSourceOptions } from './data-source.js';
 import { ServerModule } from './server/server.module.js';
 import { ConfigModule } from '@nestjs/config';
+import { SshModule } from './ssh/ssh.module.js';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { ConfigModule } from '@nestjs/config';
     PollModule,
     LogFileModule,
     ServerModule,
+    SshModule,
   ],
   controllers: [AppController],
   providers: [

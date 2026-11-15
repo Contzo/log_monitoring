@@ -11,11 +11,11 @@ sontent-Type: application/json
 }
 
 ### Enable log file monitoring
-PATCH {{host}}/log-file/enable/2
+PATCH {{host}}/log-file/enable/1
 sontent-Type: application/json
 
 ### Disable log file monitoring
-PATCH {{host}}/log-file/disable/1000
+PATCH {{host}}/log-file/disable/2
 sontent-Type: application/json
 
 

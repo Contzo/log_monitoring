@@ -6,8 +6,8 @@ import {
   UpdateDateColumn,
   OneToMany,
   type Relation,
-} from 'typeorm';
-import { LogFile } from '../log_file/log_file.entity.js';
+} from "typeorm";
+import { LogFile } from "../log_file/log_file.entity.js";
 
 @Entity()
 export class Server {
@@ -24,14 +24,14 @@ export class Server {
   @Column()
   sshUser: string;
 
-  @Column({ default: 22 })
+  @Column()
   sshPort: number;
 
   @Column()
-  sshKeyPath: string;
+  password: string;
 
   // ── Poller control ───────────────────────
-  @Column({ default: true })
+  @Column({ default: false })
   isEnabled: boolean;
 
   // ── Poller status (written by the poll loop) ──
