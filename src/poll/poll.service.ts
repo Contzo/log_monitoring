@@ -46,7 +46,8 @@ export class PollService implements OnApplicationBootstrap, BeforeApplicationShu
       port: logFile.server.sshPort,
       username: logFile.server.sshUser,
     };
-    this.sshService.execute(logFile.server.id, config, "uptime");
+    const result = await this.sshService.execute(logFile.server.id, config, "uptime");
+    console.log("result: ", result);
   }
 
   startLoop(id: number) {
