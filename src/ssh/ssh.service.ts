@@ -5,6 +5,13 @@ import { readFile } from "node:fs/promises";
 import { ConfigService } from "@nestjs/config";
 
 export type SshConfig = Pick<ConnectConfig, "host" | "port" | "username" | "password">;
+
+export type ExecResult = {
+  stdout: Buffer;
+  stderr: Buffer;
+  code: number | null; // null when the process was killed by a signal
+};
+
 @Injectable()
 export class SshService implements OnApplicationShutdown {
   serverConnections = new Map<number, Promise<Client>>();
@@ -33,7 +40,10 @@ export class SshService implements OnApplicationShutdown {
       const client = new Client();
       let hostKeyRejected = false;
 
-      client.on("ready", () => resolve(client));
+      client.on("ready", () => {
+        console.log("Connected to server: ", serverId);
+        resolve(client);
+      });
       client.on("error", (err) => {
         console.log(`SSH error on server ${serverId}:`, err.message);
         reject(
@@ -53,6 +63,41 @@ export class SshService implements OnApplicationShutdown {
           if (!ok) hostKeyRejected = true;
           return ok;
         },
+      });
+    });
+  }
+
+  async execute(
+    serverId: number,
+    config: SshConfig,
+    command: string,
+    timeoutMs = 15_000,
+  ): Promise<ExecResult> {
+    const client = await this.getServerConnection(serverId, config);
+
+    return new Promise((resolve, reject) => {
+      client.exec(command, (error, stream) => {
+        if (error) return reject(error);
+
+        const stdout: Buffer[] = [];
+        const stderr: Buffer[] = [];
+
+        const timer = setTimeout(() => {
+          reject(new Error(`Command timed out after ${timeoutMs} ms: ${command}`));
+          stream.close();
+        }, timeoutMs);
+
+        stream.on("data", (chunk: Buffer) => stdout.push(chunk));
+        stream.stderr.on("data", (chunk: Buffer) => stderr.push(chunk));
+
+        stream.on("close", (code: number | null = null) => {
+          clearTimeout(timer);
+          resolve({
+            stdout: Buffer.concat(stdout),
+            stderr: Buffer.concat(stderr),
+            code,
+          });
+        });
       });
     });
   }

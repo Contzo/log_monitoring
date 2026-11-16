@@ -3,7 +3,7 @@ import { setTimeout } from "timers/promises";
 import { Repository } from "typeorm";
 import { LogFile } from "../log_file/log_file.entity.js";
 import { InjectRepository } from "@nestjs/typeorm";
-import { SshService } from "../ssh/ssh.service.js";
+import { SshService, type SshConfig } from "../ssh/ssh.service.js";
 
 export type PollLoops = Map<
   number,
@@ -35,8 +35,18 @@ export class PollService implements OnApplicationBootstrap, BeforeApplicationShu
   }
 
   async poolCycle(id: number) {
-    const logFile = await this.logFileRepository.findOne({ where: { id } });
-    console.log("This is the monitored file: ", logFile);
+    const logFile = await this.logFileRepository.findOne({
+      where: { id },
+      relations: { server: true },
+    });
+    if (!logFile) throw new Error(`File with ${id} not found`);
+    const config: SshConfig = {
+      host: logFile.server.serverIp,
+      password: logFile.server.password,
+      port: logFile.server.sshPort,
+      username: logFile.server.sshUser,
+    };
+    this.sshService.execute(logFile.server.id, config, "uptime");
   }
 
   startLoop(id: number) {
