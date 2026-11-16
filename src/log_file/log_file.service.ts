@@ -28,7 +28,10 @@ export class LogFileService {
   }
 
   async findOne(id: number) {
-    const logFile = await this.logFileRepository.findOne({ where: { id } });
+    const logFile = await this.logFileRepository.findOne({
+      where: { id },
+      relations: { server: true },
+    });
     if (logFile === null) throw new NotFoundException("Log file not found");
     return logFile;
   }

@@ -58,7 +58,10 @@ An earlier idea was a push script on the monitored server. That was dropped beca
 - **Shutdown:** call `app.enableShutdownHooks()` in `main.ts`; on `onModuleDestroy`/`onApplicationShutdown` stop all loops, let in-flight cycles finish, close SSH connections. Important for Docker SIGTERM.
 - **Failure handling:** try/catch around each cycle so one server's failure never kills other loops; exponential backoff on repeated failures, reset on success; reconnect the SSH connection when it drops; keepalives on the connection.
 - **Per-server status** stored in DB (last success, last error) so the UI can show "unreachable since ...".
-- Controllers manage the poller indirectly: adding/disabling/deleting a server via the API asks the poller to start/stop that server's loop.
+- Controllers manage the poller indirectly: enabling/disabling a **log file** via the API asks the poller to start/stop that file's loop.
+- **Decided: no `isEnabled` on servers.** Only `LogFile.isEnabled` is a switch (one loop per enabled file). A server with no enabled files is simply idle.
+- **Decided: `SshService` owns the connections** (`Map<serverId, Client>`), shared by all loops of a server. Connections are created **lazily** on the first poll cycle that needs one, reconnected when dropped, removed from the map on `close`/`error`, and **not closed when idle** (only on server deletion and shutdown). Bootstrap only starts loops for enabled files; there is no server-level bootstrap connect.
+- Server connection status (`lastSuccessAt`/`lastError...`) is written by the connection owner, not by each loop. Add a per-file status later if file-level errors need showing.
 - Keep the **line parser a pure function** (bytes in; messages with start offsets plus consumed byte count out) so the trickiest logic is testable without SSH or a DB.
 - Also serves historical queries (filtering, pagination) and pushes new messages to clients in real time.
 - Run a **single backend instance** for now. Two instances would both poll every server (the unique key prevents duplicate rows but work and cursor updates would collide). Later options: Postgres advisory lock per server, or a separate poller container.

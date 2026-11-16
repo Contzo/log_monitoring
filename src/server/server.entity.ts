@@ -30,10 +30,6 @@ export class Server {
   @Column()
   password: string;
 
-  // ── Poller control ───────────────────────
-  @Column({ default: false })
-  isEnabled: boolean;
-
   // ── Poller status (written by the poll loop) ──
   @Column({ type: Date, nullable: true })
   lastSuccessAt: Date | null;

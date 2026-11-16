@@ -1,12 +1,9 @@
-import {
-  Injectable,
-  OnApplicationBootstrap,
-  BeforeApplicationShutdown,
-} from '@nestjs/common';
-import { setTimeout } from 'timers/promises';
-import { Repository } from 'typeorm';
-import { LogFile } from '../log_file/log_file.entity.js';
-import { InjectRepository } from '@nestjs/typeorm';
+import { Injectable, OnApplicationBootstrap, BeforeApplicationShutdown } from "@nestjs/common";
+import { setTimeout } from "timers/promises";
+import { Repository } from "typeorm";
+import { LogFile } from "../log_file/log_file.entity.js";
+import { InjectRepository } from "@nestjs/typeorm";
+import { SshService } from "../ssh/ssh.service.js";
 
 export type PollLoops = Map<
   number,
@@ -14,11 +11,12 @@ export type PollLoops = Map<
 >;
 
 @Injectable()
-export class PollService  implements OnApplicationBootstrap, BeforeApplicationShutdown{
+export class PollService implements OnApplicationBootstrap, BeforeApplicationShutdown {
   loops: PollLoops;
   constructor(
     @InjectRepository(LogFile)
     private readonly logFileRepository: Repository<LogFile>,
+    private readonly sshService: SshService,
   ) {
     this.loops = new Map();
   }
@@ -30,24 +28,22 @@ export class PollService  implements OnApplicationBootstrap, BeforeApplicationSh
   }
 
   async beforeApplicationShutdown() {
-    console.log(
-      '----------App shutting down: La munca ortodocsilor--------------',
-    );
+    console.log("----------App shutting down: La munca ortodocsilor--------------");
     const running = [...this.loops.values()];
     running.forEach((loop) => loop.abortPollCycle.abort());
     await Promise.allSettled(running.map(({ donePollCycle }) => donePollCycle));
   }
 
-  poolCycle(id: number) {
-    console.log(`Executed pool for file: ${id}`);
+  async poolCycle(id: number) {
+    const logFile = await this.logFileRepository.findOne({ where: { id } });
+    console.log("This is the monitored file: ", logFile);
   }
 
   startLoop(id: number) {
     if (this.loops.has(id)) return; // loop already running
     const abortPollCycle = new AbortController();
     const donePollCycle = this.runLoop(id, abortPollCycle).finally(() => {
-      if (this.loops.get(id)?.abortPollCycle === abortPollCycle)
-        this.loops.delete(id);
+      if (this.loops.get(id)?.abortPollCycle === abortPollCycle) this.loops.delete(id);
     });
     this.loops.set(id, { abortPollCycle, donePollCycle });
   }
@@ -60,7 +56,7 @@ export class PollService  implements OnApplicationBootstrap, BeforeApplicationSh
         await setTimeout(1000, undefined, { signal });
       }
     } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
+      if (error instanceof Error && error.name === "AbortError") {
         console.log(`File monitoring for: ${id} aborted`);
       } else {
         console.log(`Poll loop for file ${id} failed`, error);
