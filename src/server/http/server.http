@@ -7,10 +7,10 @@ Content-Type: application/json
 
 {
   "serverName": "nms_ciurel", 
-  "serverIp": "127.0.0.2", 
+  "serverIp": "127.0.0.1", 
   "password": "test",
   "sshUser": "root", 
-  "sshPort": 2223
+  "sshPort": 2222
 }
 ### Add server 2
 POST {{host}}/server

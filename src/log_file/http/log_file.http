@@ -6,12 +6,12 @@ POST {{host}}/log-file
 sontent-Type: application/json
 
 {
-  "logPath": "var/log/app.log/fdf/fdfa/test3.log" ,
+  "logPath": "/root/log_file/test_file.txt" ,
   "serverName": "nms_ciurel"
 }
 
 ### Enable log file monitoring
-PATCH {{host}}/log-file/enable/2
+PATCH {{host}}/log-file/enable/1
 sontent-Type: application/json
 
 ### Add file
@@ -20,7 +20,7 @@ sontent-Type: application/json
 
 {
   "logPath": "/root/log_file/test_file.txt" ,
-  "serverName": "nms_ciurel"
+  "serverName": "nms_sabareni"
 }
 
 ### Enable log file monitoring

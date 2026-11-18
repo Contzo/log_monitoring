@@ -4,6 +4,9 @@ import { isKnownHostKey } from "./known-keys.js";
 import { readFile } from "node:fs/promises";
 import { ConfigService } from "@nestjs/config";
 import { type ExecResult } from "./exec-result.js";
+import { assertSuccess } from "./exec-result.js";
+import { isNumber } from "class-validator";
+import { Server } from "../server/server.entity.js";
 
 export type SshConfig = Pick<ConnectConfig, "host" | "port" | "username" | "password">;
 
@@ -27,39 +30,6 @@ export class SshService implements OnApplicationShutdown {
 
     attempt.then((client) => client.once("close", removeIfCurrent), removeIfCurrent);
     return attempt;
-  }
-
-  private async connect(serverId: number, config: SshConfig): Promise<Client> {
-    const knownHosts = await readFile(this.config.getOrThrow<string>("KNOWN_HOSTS_PATH"), "utf8");
-    return new Promise((resolve, reject) => {
-      const client = new Client();
-      let hostKeyRejected = false;
-
-      client.on("ready", () => {
-        console.log("Connected to server: ", serverId);
-        resolve(client);
-      });
-      client.on("error", (err) => {
-        console.log(`SSH error on server ${serverId}:`, err.message);
-        reject(
-          hostKeyRejected
-            ? new Error(`Host key for ${config.host}:${config.port} is unknown or changed`)
-            : err,
-        );
-      });
-
-      client.connect({
-        ...config,
-        readyTimeout: 10_000,
-        keepaliveInterval: 10_000,
-        keepaliveCountMax: 3,
-        hostVerifier: (key: Buffer) => {
-          const ok = isKnownHostKey(knownHosts, config.host!, config.port ?? 22, key);
-          if (!ok) hostKeyRejected = true;
-          return ok;
-        },
-      });
-    });
   }
 
   async execute(
@@ -98,6 +68,13 @@ export class SshService implements OnApplicationShutdown {
       });
     });
   }
+  async executeStatCommand(serverId: number, config: SshConfig, timeoutMs = 15_000) {
+    const result = await this.execute(serverId, config, `stat -c '%i %s'`, timeoutMs);
+    const [inode, size] = assertSuccess(result).trim().split(" ");
+    const size_nr = parseInt(size);
+    if (!inode || !isNumber(size_nr))
+      throw new Error(`Inode: ${inode} or size: ${size} are not valid`);
+  }
 
   async onApplicationShutdown() {
     const attempts = [...this.serverConnections.values()];
@@ -106,5 +83,50 @@ export class SshService implements OnApplicationShutdown {
     results.forEach((result) => {
       if (result.status == "fulfilled") result.value.end();
     });
+  }
+
+  /*//////////////////////////////////////////////////////////////
+                       Private funcitons
+//////////////////////////////////////////////////////////////*/
+  private async connect(serverId: number, config: SshConfig): Promise<Client> {
+    const knownHosts = await readFile(this.config.getOrThrow<string>("KNOWN_HOSTS_PATH"), "utf8");
+    return new Promise((resolve, reject) => {
+      const client = new Client();
+      let hostKeyRejected = false;
+
+      client.on("ready", () => {
+        console.log("Connected to server: ", serverId);
+        resolve(client);
+      });
+      client.on("error", (err) => {
+        console.log(`SSH error on server ${serverId}:`, err.message);
+        reject(
+          hostKeyRejected
+            ? new Error(`Host key for ${config.host}:${config.port} is unknown or changed`)
+            : err,
+        );
+      });
+
+      client.connect({
+        ...config,
+        readyTimeout: 10_000,
+        keepaliveInterval: 10_000,
+        keepaliveCountMax: 3,
+        hostVerifier: (key: Buffer) => {
+          const ok = isKnownHostKey(knownHosts, config.host!, config.port ?? 22, key);
+          if (!ok) hostKeyRejected = true;
+          return ok;
+        },
+      });
+    });
+  }
+
+  private server2SshConfig(server: Server): SshConfig {
+    return {
+      host: server.serverIp,
+      port: server.sshPort,
+      username: server.sshUser,
+      password: server.password,
+    };
   }
 }

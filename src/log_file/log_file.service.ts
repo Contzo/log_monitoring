@@ -5,13 +5,11 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { CreateLogFileDto } from "./dtos/create-log-file.dto.js";
 import { ServerService } from "../server/server.service.js";
 import { handleDbError } from "../common/db-errors.js";
-import { PollService } from "../poll/poll.service.js";
 @Injectable()
 export class LogFileService {
   constructor(
     @InjectRepository(LogFile) private logFileRepository: Repository<LogFile>,
     private readonly serverService: ServerService,
-    private readonly pollService: PollService,
   ) {}
 
   async create(newLogFile: CreateLogFileDto) {
@@ -40,19 +38,33 @@ export class LogFileService {
     return this.logFileRepository.find();
   }
 
-  async enableFileMonitoring(id: number) {
+  async update(id: number, attrs: Partial<LogFile>) {
     const logFile = await this.findOne(id);
-    logFile.isEnabled = true;
-    await this.logFileRepository.save(logFile);
-    this.pollService.startLoop(logFile.id);
-    return logFile;
+
+    Object.assign(logFile, attrs);
+    return this.logFileRepository.save(logFile);
+  }
+  async enableFileMonitoring(id: number) {
+    return this.update(id, { isEnabled: true });
+  }
+  async disableFileMoniuoring(id: number) {
+    return this.update(id, { isEnabled: false });
   }
 
-  async disableFileMonitoring(id: number) {
-    const logFile = await this.findOne(id);
-    logFile.isEnabled = false;
-    this.pollService.stopLoop(logFile.id);
-    await this.logFileRepository.save(logFile);
+  async finddAllEnabledLogFiles() {
+    const enabledFiles = await this.logFileRepository.find({
+      where: { isEnabled: true },
+    });
+    if (!enabledFiles) throw new NotFoundException("No enabled files yet");
+    return enabledFiles;
+  }
+
+  async findOneWithServer(id: number) {
+    const logFile = await this.logFileRepository.findOne({
+      where: { id },
+      relations: { server: true },
+    });
+    if (!logFile) throw new NotFoundException(`File with ${id} not found`);
     return logFile;
   }
 }

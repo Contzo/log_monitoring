@@ -1,10 +1,8 @@
-import { Injectable, OnApplicationBootstrap, BeforeApplicationShutdown } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { setTimeout } from "timers/promises";
-import { Repository } from "typeorm";
-import { LogFile } from "../log_file/log_file.entity.js";
-import { InjectRepository } from "@nestjs/typeorm";
 import { SshService, type SshConfig } from "../ssh/ssh.service.js";
-import { assertSuccess, stdoutText } from "../ssh/exec-result.js";
+import { assertSuccess } from "../ssh/exec-result.js";
+import { LogFileService } from "../log_file/log_file.service.js";
 
 export type PollLoops = Map<
   number,
@@ -12,36 +10,18 @@ export type PollLoops = Map<
 >;
 
 @Injectable()
-export class PollService implements OnApplicationBootstrap, BeforeApplicationShutdown {
-  loops: PollLoops;
+export class PollService {
+  private loops: PollLoops;
   constructor(
-    @InjectRepository(LogFile)
-    private readonly logFileRepository: Repository<LogFile>,
+    private readonly logFileService: LogFileService,
     private readonly sshService: SshService,
   ) {
     this.loops = new Map();
   }
-  async onApplicationBootstrap() {
-    const enabledFiles = await this.logFileRepository.find({
-      where: { isEnabled: true },
-    });
-    enabledFiles.forEach((logFile) => this.startLoop(logFile.id));
-  }
-
-  async beforeApplicationShutdown() {
-    console.log("----------App shutting down: La munca ortodocsilor--------------");
-    const running = [...this.loops.values()];
-    running.forEach((loop) => loop.abortPollCycle.abort());
-    await Promise.allSettled(running.map(({ donePollCycle }) => donePollCycle));
-  }
 
   async poolCycle(id: number) {
     try {
-      const logFile = await this.logFileRepository.findOne({
-        where: { id },
-        relations: { server: true },
-      });
-      if (!logFile) throw new Error(`File with ${id} not found`);
+      const logFile = await this.logFileService.findOneWithServer(id);
       const config: SshConfig = {
         host: logFile.server.serverIp,
         password: logFile.server.password,
@@ -49,11 +29,15 @@ export class PollService implements OnApplicationBootstrap, BeforeApplicationShu
         username: logFile.server.sshUser,
       };
       const result = assertSuccess(
-        await this.sshService.execute(logFile.server.id, config, "uptime"),
+        await this.sshService.execute(
+          logFile.server.id,
+          config,
+          `stat -c '%i %s' ${logFile.logPath}`,
+        ),
       );
-      console.log(
-        `Executed command: ${result.command} on server ${logFile.server.id} with this output: ${stdoutText(result)}`,
-      );
+      const [inode, size] = result.trim().split(" ");
+      console.log("Formatted result: ", [inode, size]);
+      console.log(`The result: ${result}`);
     } catch (error) {
       console.log(error);
     }
@@ -72,7 +56,7 @@ export class PollService implements OnApplicationBootstrap, BeforeApplicationShu
     const { signal } = abortController;
     try {
       while (!signal.aborted) {
-        this.poolCycle(id);
+        await this.poolCycle(id);
         await setTimeout(1000, undefined, { signal });
       }
     } catch (error) {
@@ -88,6 +72,12 @@ export class PollService implements OnApplicationBootstrap, BeforeApplicationShu
     const controller = this.loops.get(id);
     if (!controller) return;
     controller.abortPollCycle.abort();
-    this.loops.delete(id);
+  }
+
+  /*//////////////////////////////////////////////////////////////
+                       Getter functions
+//////////////////////////////////////////////////////////////*/
+  getLops() {
+    return this.loops;
   }
 }

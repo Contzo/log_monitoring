@@ -30,8 +30,8 @@ export function isSuccess(result: ExecResult): boolean {
   return result.code === 0;
 }
 
-export function assertSuccess(result: ExecResult): ExecResult {
-  if (isSuccess(result)) return result;
+export function assertSuccess(result: ExecResult): string {
+  if (isSuccess(result)) return stdoutText(result);
 
   const reason =
     result.code !== null ? `exit code ${result.code}` : `signal ${result.signal ?? "unknown"}`;
