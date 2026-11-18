@@ -14,6 +14,19 @@ sontent-Type: application/json
 PATCH {{host}}/log-file/enable/2
 sontent-Type: application/json
 
+### Add file
+POST {{host}}/log-file
+sontent-Type: application/json
+
+{
+  "logPath": "/root/log_file/test_file.txt" ,
+  "serverName": "nms_ciurel"
+}
+
+### Enable log file monitoring
+PATCH {{host}}/log-file/enable/2
+sontent-Type: application/json
+
 ### Disable log file monitoring
 PATCH {{host}}/log-file/disable/2
 sontent-Type: application/json
