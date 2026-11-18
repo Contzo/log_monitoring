@@ -3,14 +3,9 @@ import { Client, type ConnectConfig } from "ssh2";
 import { isKnownHostKey } from "./known-keys.js";
 import { readFile } from "node:fs/promises";
 import { ConfigService } from "@nestjs/config";
+import { type ExecResult } from "./exec-result.js";
 
 export type SshConfig = Pick<ConnectConfig, "host" | "port" | "username" | "password">;
-
-export type ExecResult = {
-  stdout: Buffer;
-  stderr: Buffer;
-  code: number | null; // null when the process was killed by a signal
-};
 
 @Injectable()
 export class SshService implements OnApplicationShutdown {
@@ -90,12 +85,14 @@ export class SshService implements OnApplicationShutdown {
         stream.on("data", (chunk: Buffer) => stdout.push(chunk));
         stream.stderr.on("data", (chunk: Buffer) => stderr.push(chunk));
 
-        stream.on("close", (code: number | null = null) => {
+        stream.on("close", (code: number, signal: string) => {
           clearTimeout(timer);
           resolve({
+            command,
             stdout: Buffer.concat(stdout),
             stderr: Buffer.concat(stderr),
             code,
+            signal,
           });
         });
       });

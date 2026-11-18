@@ -6,11 +6,11 @@ POST {{host}}/server
 Content-Type: application/json
 
 {
-  "serverName": "nms_sabareni", 
-  "serverIp": "127.0.0.1", 
+  "serverName": "nms_ciurel", 
+  "serverIp": "127.0.0.2", 
   "password": "test",
   "sshUser": "root", 
-  "sshPort": 2222
+  "sshPort": 2223
 }
 
 

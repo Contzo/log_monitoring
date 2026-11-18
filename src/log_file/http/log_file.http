@@ -7,11 +7,11 @@ sontent-Type: application/json
 
 {
   "logPath": "var/log/app.log/fdf/fdfa/test3.log" ,
-  "serverName": "nms_sabareni"
+  "serverName": "nms_ciurel"
 }
 
 ### Enable log file monitoring
-PATCH {{host}}/log-file/enable/1
+PATCH {{host}}/log-file/enable/2
 sontent-Type: application/json
 
 ### Disable log file monitoring
