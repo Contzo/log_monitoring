@@ -68,13 +68,6 @@ export class SshService implements OnApplicationShutdown {
       });
     });
   }
-  async executeStatCommand(serverId: number, config: SshConfig, timeoutMs = 15_000) {
-    const result = await this.execute(serverId, config, `stat -c '%i %s'`, timeoutMs);
-    const [inode, size] = assertSuccess(result).trim().split(" ");
-    const size_nr = parseInt(size);
-    if (!inode || !isNumber(size_nr))
-      throw new Error(`Inode: ${inode} or size: ${size} are not valid`);
-  }
 
   async onApplicationShutdown() {
     const attempts = [...this.serverConnections.values()];
@@ -119,14 +112,5 @@ export class SshService implements OnApplicationShutdown {
         },
       });
     });
-  }
-
-  private server2SshConfig(server: Server): SshConfig {
-    return {
-      host: server.serverIp,
-      port: server.sshPort,
-      username: server.sshUser,
-      password: server.password,
-    };
   }
 }

@@ -6,10 +6,11 @@ import { SshModule } from "../ssh/ssh.module.js";
 import { PollController } from "./poll.controller.js";
 import { LogFileModule } from "../log_file/log_file.module.js";
 import { PollManageService } from "./poll-manage.service.js";
+import { RemoteLogReaderService } from "./RemoteLogReader.service.js";
 
 @Module({
   imports: [TypeOrmModule.forFeature([LogFile]), SshModule, LogFileModule],
-  providers: [PollService, PollManageService],
+  providers: [PollService, PollManageService, RemoteLogReaderService],
   controllers: [PollController],
 })
 export class PollModule {}

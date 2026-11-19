@@ -1,12 +1,15 @@
 import { Injectable } from "@nestjs/common";
 import { setTimeout } from "timers/promises";
-import { SshService, type SshConfig } from "../ssh/ssh.service.js";
-import { assertSuccess } from "../ssh/exec-result.js";
 import { LogFileService } from "../log_file/log_file.service.js";
+import { RemoteLogReaderService } from "./RemoteLogReader.service.js";
+import { decideCursor } from "./cursor-decision.js";
 
 export type PollLoops = Map<
   number,
-  { abortPollCycle: AbortController; donePollCycle: Promise<void> }
+  {
+    abortPollCycle: AbortController;
+    donePollCycle: Promise<void>;
+  }
 >;
 
 @Injectable()
@@ -14,36 +17,28 @@ export class PollService {
   private loops: PollLoops;
   constructor(
     private readonly logFileService: LogFileService,
-    private readonly sshService: SshService,
+    private readonly remoteLogReaderService: RemoteLogReaderService,
   ) {
     this.loops = new Map();
   }
-
   async poolCycle(id: number) {
     try {
       const logFile = await this.logFileService.findOneWithServer(id);
-      const config: SshConfig = {
-        host: logFile.server.serverIp,
-        password: logFile.server.password,
-        port: logFile.server.sshPort,
-        username: logFile.server.sshUser,
-      };
-      const result = assertSuccess(
-        await this.sshService.execute(
-          logFile.server.id,
-          config,
-          `stat -c '%i %s' ${logFile.logPath}`,
-        ),
+      const { inode, size } = await this.remoteLogReaderService.getRemoteLogStat(logFile);
+      const cursorDecision = decideCursor(
+        { inode: logFile.inode, offset: logFile.byteOffset },
+        { inode, size },
       );
-      const [inode, size] = result.trim().split(" ");
+      if (cursorDecision.kind === `nothing`) return;
+      console.log("Cursor Decision", cursorDecision);
+
       console.log("Formatted result: ", [inode, size]);
-      console.log(`The result: ${result}`);
     } catch (error) {
       console.log(error);
     }
   }
 
-  startLoop(id: number) {
+  async startLoop(id: number) {
     if (this.loops.has(id)) return; // loop already running
     const abortPollCycle = new AbortController();
     const donePollCycle = this.runLoop(id, abortPollCycle).finally(() => {
@@ -74,6 +69,13 @@ export class PollService {
     controller.abortPollCycle.abort();
   }
 
+  /*//////////////////////////////////////////////////////////////
+                       Private functions
+//////////////////////////////////////////////////////////////*/
+
+  /*//////////////////////////////////////////////////////////////
+                       Private functions
+//////////////////////////////////////////////////////////////*/
   /*//////////////////////////////////////////////////////////////
                        Getter functions
 //////////////////////////////////////////////////////////////*/
