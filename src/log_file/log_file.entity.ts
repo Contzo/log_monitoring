@@ -8,12 +8,12 @@ import {
   JoinColumn,
   Index,
   type Relation,
-} from 'typeorm';
-import { Server } from '../server/server.entity.js';
-import { bigintToNumber } from '../common/transformers.js';
+} from "typeorm";
+import { Server } from "../server/server.entity.js";
+import { bigintToNumber } from "../common/transformers.js";
 
 @Entity()
-@Index(['server', 'logPath'], { unique: true })
+@Index(["server", "logPath"], { unique: true })
 export class LogFile {
   @PrimaryGeneratedColumn()
   id: number;
@@ -21,7 +21,7 @@ export class LogFile {
   @Column()
   logPath: string;
 
-  @Column({ default: true })
+  @Column({ default: false })
   isEnabled: boolean;
 
   // ── Read cursor ──────────────────────────
@@ -30,7 +30,7 @@ export class LogFile {
   inode: string | null;
 
   // Bytes of this file already consumed and stored.
-  @Column({ type: 'bigint', default: 0, transformer: bigintToNumber })
+  @Column({ type: "bigint", default: 0, transformer: bigintToNumber })
   byteOffset: number;
 
   @CreateDateColumn()
@@ -45,8 +45,8 @@ export class LogFile {
 
   @ManyToOne(() => Server, (server) => server.files, {
     nullable: false,
-    onDelete: 'CASCADE',
+    onDelete: "CASCADE",
   })
-  @JoinColumn({ name: 'serverId' })
+  @JoinColumn({ name: "serverId" })
   server: Relation<Server>;
 }

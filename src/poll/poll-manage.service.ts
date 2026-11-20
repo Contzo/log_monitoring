@@ -1,9 +1,15 @@
-import { Injectable, OnApplicationBootstrap, BeforeApplicationShutdown } from "@nestjs/common";
+import {
+  Injectable,
+  OnApplicationBootstrap,
+  BeforeApplicationShutdown,
+  Logger,
+} from "@nestjs/common";
 import { LogFileService } from "../log_file/log_file.service.js";
 import { PollService } from "./poll.service.js";
 
 @Injectable()
 export class PollManageService implements OnApplicationBootstrap, BeforeApplicationShutdown {
+  private logger = new Logger("PollManageService");
   constructor(
     private readonly logFileService: LogFileService,
     private readonly pollService: PollService,
@@ -14,7 +20,7 @@ export class PollManageService implements OnApplicationBootstrap, BeforeApplicat
   }
 
   async beforeApplicationShutdown() {
-    console.log("----------App shutting down: La munca ortodocsilor--------------");
+    this.logger.debug("----------App shutting down: La munca ortodocsilor--------------");
     const running = [...this.pollService.getLops().values()];
     running.forEach((loop) => loop.abortPollCycle.abort());
     await Promise.allSettled(running.map(({ donePollCycle }) => donePollCycle));

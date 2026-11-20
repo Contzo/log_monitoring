@@ -1,9 +1,10 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { setTimeout } from "timers/promises";
 import { LogFileService } from "../log_file/log_file.service.js";
 import { RemoteLogReaderService } from "./RemoteLogReader.service.js";
 import { decideCursor } from "./cursor-decision.js";
 import { parseCompleteLines } from "./parse-lines.js";
+import { logError } from "../common/errorHandlers.js";
 
 export type PollLoops = Map<
   number,
@@ -16,6 +17,7 @@ export type PollLoops = Map<
 @Injectable()
 export class PollService {
   private loops: PollLoops;
+  private pollLogger = new Logger("PollService");
   constructor(
     private readonly logFileService: LogFileService,
     private readonly remoteLogReaderService: RemoteLogReaderService,
@@ -31,15 +33,14 @@ export class PollService {
         { inode, size },
       );
       if (cursorDecision.kind === `nothing`) return;
-      console.log("Cursor Decision", cursorDecision);
+      this.pollLogger.debug(`Cursor Decision: ${cursorDecision.kind}`);
       const chunk = await this.remoteLogReaderService.getRemoteBytes(logFile, cursorDecision.from);
       const { lines, consumedBytes } = parseCompleteLines(chunk, cursorDecision.from);
-      console.log("New lines: ", lines, "consumed bytes:", consumedBytes);
+      this.pollLogger.debug(`New lines: ${lines} consumed bytes: ${consumedBytes}`);
       const newOffset = cursorDecision.from + consumedBytes;
-      await this.logFileService.update(id, { inode });
-      await this.logFileService.update(id, { byteOffset: newOffset });
+      await this.logFileService.update(id, { byteOffset: newOffset, inode });
     } catch (error) {
-      console.log(error);
+      logError(error, this.pollLogger);
     }
   }
 
@@ -61,9 +62,9 @@ export class PollService {
       }
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
-        console.log(`File monitoring for: ${id} aborted`);
+        this.pollLogger.error(`File monitoring for: ${id} aborted`, error.stack);
       } else {
-        console.log(`Poll loop for file ${id} failed`, error);
+        this.pollLogger.error(`Poll loop for file ${id} failed`, error);
       }
     }
   }
@@ -74,13 +75,6 @@ export class PollService {
     controller.abortPollCycle.abort();
   }
 
-  /*//////////////////////////////////////////////////////////////
-                       Private functions
-//////////////////////////////////////////////////////////////*/
-
-  /*//////////////////////////////////////////////////////////////
-                       Private functions
-//////////////////////////////////////////////////////////////*/
   /*//////////////////////////////////////////////////////////////
                        Getter functions
 //////////////////////////////////////////////////////////////*/

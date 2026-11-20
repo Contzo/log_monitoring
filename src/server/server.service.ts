@@ -36,4 +36,11 @@ export class ServerService {
     if (!server) throw new NotFoundException("Server not monitored");
     return server;
   }
+  async update(id: number, attrs: Partial<Server>) {
+    const server = await this.serverRepository.findOne({ where: { id } });
+    if (!server) throw new NotFoundException(`Server ${id} not found`);
+
+    Object.assign(server, attrs);
+    return this.serverRepository.save(server);
+  }
 }

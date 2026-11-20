@@ -1,11 +1,10 @@
-import { Injectable, OnApplicationShutdown } from "@nestjs/common";
+import { Injectable, OnApplicationShutdown, Logger } from "@nestjs/common";
 import { Client, type ConnectConfig } from "ssh2";
 import { isKnownHostKey } from "./known-keys.js";
 import { readFile } from "node:fs/promises";
 import { ConfigService } from "@nestjs/config";
 import { type ExecResult } from "./exec-result.js";
-import { assertSuccess } from "./exec-result.js";
-import { isNumber } from "class-validator";
+import { ServerService } from "../server/server.service.js";
 import { Server } from "../server/server.entity.js";
 
 export type SshConfig = Pick<ConnectConfig, "host" | "port" | "username" | "password">;
@@ -13,8 +12,12 @@ export type SshConfig = Pick<ConnectConfig, "host" | "port" | "username" | "pass
 @Injectable()
 export class SshService implements OnApplicationShutdown {
   serverConnections = new Map<number, Promise<Client>>();
+  sshLoger = new Logger("SshService");
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    private readonly serverService: ServerService,
+  ) {}
 
   getServerConnection(serverId: number, config: SshConfig): Promise<Client> {
     const existent = this.serverConnections.get(serverId);
@@ -87,17 +90,21 @@ export class SshService implements OnApplicationShutdown {
       const client = new Client();
       let hostKeyRejected = false;
 
-      client.on("ready", () => {
-        console.log("Connected to server: ", serverId);
+      client.on("ready", async () => {
+        this.sshLoger.log(`Connected to server: ${serverId}`);
         resolve(client);
+        await this.updateServer(serverId, { lastSuccessAt: new Date() });
       });
-      client.on("error", (err) => {
-        console.log(`SSH error on server ${serverId}:`, err.message);
-        reject(
-          hostKeyRejected
-            ? new Error(`Host key for ${config.host}:${config.port} is unknown or changed`)
-            : err,
-        );
+      client.on("error", async (err) => {
+        this.sshLoger.error(`SSH error on server ${serverId}:`, err.stack);
+        const error = hostKeyRejected
+          ? new Error(`Host key for ${config.host}:${config.port} is unknown or changed`)
+          : err;
+        reject(error);
+        await this.updateServer(serverId, {
+          lastErrorAt: new Date(),
+          lastError: error.message,
+        });
       });
 
       client.connect({
@@ -112,5 +119,14 @@ export class SshService implements OnApplicationShutdown {
         },
       });
     });
+  }
+  private async updateServer(id: number, args: Partial<Server>) {
+    try {
+      await this.serverService.update(id, args);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const stack = error instanceof Error ? error.stack : undefined;
+      this.sshLoger.error(`Failed to update server ${id}: ${message}`, stack);
+    }
   }
 }
