@@ -2,7 +2,8 @@
 /dist
 /node_modules
 /build
-/log_files
+/log_files/nms_ciurel
+/log_files/nms_sabareni
 
 # TypeScript build cache
 *.tsbuildinfo

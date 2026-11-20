@@ -3,6 +3,7 @@ import { setTimeout } from "timers/promises";
 import { LogFileService } from "../log_file/log_file.service.js";
 import { RemoteLogReaderService } from "./RemoteLogReader.service.js";
 import { decideCursor } from "./cursor-decision.js";
+import { parseCompleteLines } from "./parse-lines.js";
 
 export type PollLoops = Map<
   number,
@@ -31,8 +32,12 @@ export class PollService {
       );
       if (cursorDecision.kind === `nothing`) return;
       console.log("Cursor Decision", cursorDecision);
-
-      console.log("Formatted result: ", [inode, size]);
+      const chunk = await this.remoteLogReaderService.getRemoteBytes(logFile, cursorDecision.from);
+      const { lines, consumedBytes } = parseCompleteLines(chunk, cursorDecision.from);
+      console.log("New lines: ", lines, "consumed bytes:", consumedBytes);
+      const newOffset = cursorDecision.from + consumedBytes;
+      await this.logFileService.update(id, { inode });
+      await this.logFileService.update(id, { byteOffset: newOffset });
     } catch (error) {
       console.log(error);
     }

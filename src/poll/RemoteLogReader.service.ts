@@ -4,6 +4,8 @@ import { LogFile } from "../log_file/log_file.entity.js";
 import { assertSuccess } from "../ssh/exec-result.js";
 import { isNumber } from "class-validator";
 
+export const MAX_BYTES_PER_POLL = 65536;
+
 export interface RemoteLogState {
   inode: string;
   size: number;
@@ -30,16 +32,16 @@ export class RemoteLogReaderService {
     };
   }
 
-  async getRemoteMessage(logFile: LogFile): Promise<string> {
+  // Returns raw bytes starting at byte offset `from` (0-based); tail -c is 1-based.
+  async getRemoteBytes(logFile: LogFile, from: number): Promise<Buffer> {
     const sshConfig = this.getSshConfigFromLogFile(logFile);
-    const result = assertSuccess(
-      await this.sshService.execute(
-        logFile.serverId,
-        sshConfig,
-        `tail -c +${logFile.byteOffset + 1} ${logFile.logPath} | head -c 65536`,
-      ),
+    const result = await this.sshService.execute(
+      logFile.serverId,
+      sshConfig,
+      `tail -c +${from + 1} ${logFile.logPath} | head -c ${MAX_BYTES_PER_POLL}`,
     );
-    return result;
+    assertSuccess(result);
+    return result.stdout;
   }
 
   /*//////////////////////////////////////////////////////////////
