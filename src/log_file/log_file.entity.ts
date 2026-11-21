@@ -8,9 +8,11 @@ import {
   JoinColumn,
   Index,
   type Relation,
+  OneToMany,
 } from "typeorm";
 import { Server } from "../server/server.entity.js";
 import { bigintToNumber } from "../common/transformers.js";
+import { Message } from "../messages/message.entity.js";
 
 @Entity()
 @Index(["server", "logPath"], { unique: true })
@@ -33,6 +35,9 @@ export class LogFile {
   @Column({ type: "bigint", default: 0, transformer: bigintToNumber })
   byteOffset: number;
 
+  @Column({ type: "bigint", default: 0, transformer: bigintToNumber })
+  generation: number;
+
   @CreateDateColumn()
   createdAt: Date;
 
@@ -49,4 +54,7 @@ export class LogFile {
   })
   @JoinColumn({ name: "serverId" })
   server: Relation<Server>;
+
+  @OneToMany(() => Message, (message) => message.logFile)
+  messages: Relation<Message[]>;
 }

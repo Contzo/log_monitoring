@@ -5,6 +5,8 @@ import { RemoteLogReaderService } from "./RemoteLogReader.service.js";
 import { decideCursor } from "./cursor-decision.js";
 import { parseCompleteLines } from "./parse-lines.js";
 import { logError } from "../common/errorHandlers.js";
+import { MessagesService } from "../messages/messages.service.js";
+import { DataSource } from "typeorm";
 
 export type PollLoops = Map<
   number,
@@ -21,6 +23,8 @@ export class PollService {
   constructor(
     private readonly logFileService: LogFileService,
     private readonly remoteLogReaderService: RemoteLogReaderService,
+    private readonly messagesService: MessagesService,
+    private readonly dataSource: DataSource,
   ) {
     this.loops = new Map();
   }
@@ -34,13 +38,31 @@ export class PollService {
       );
       if (cursorDecision.kind === `nothing`) return;
       this.pollLogger.debug(`Cursor Decision: ${cursorDecision.kind}`);
+      const generation =
+        cursorDecision.kind === "reset" ? logFile.generation + 1 : logFile.generation;
       const chunk = await this.remoteLogReaderService.getRemoteBytes(logFile, cursorDecision.from);
       const { lines, consumedBytes } = parseCompleteLines(chunk, cursorDecision.from);
-      this.pollLogger.debug(`New lines: ${lines} consumed bytes: ${consumedBytes}`);
+      this.pollLogger.debug(`New lines: ${lines.length} consumed bytes: ${consumedBytes}`);
       const newOffset = cursorDecision.from + consumedBytes;
-      await this.logFileService.update(id, { byteOffset: newOffset, inode });
+      await this.dataSource.transaction(async (manager) => {
+        await this.messagesService.insertBatch(logFile.id, generation, lines, manager);
+        await this.logFileService.saveCursor(
+          logFile.id,
+          {
+            inode,
+            byteOffset: newOffset,
+            generation,
+          },
+          manager,
+        );
+      });
+      if (cursorDecision.kind === "reset") {
+        this.pollLogger.log(
+          `Cursor reset for file ${id} (${logFile.logPath}): now generation ${generation}`,
+        );
+      }
     } catch (error) {
-      logError(error, this.pollLogger);
+      logError(error, this.pollLogger, `Poll cycle for file ${id} failed`);
     }
   }
 
@@ -62,9 +84,9 @@ export class PollService {
       }
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
-        this.pollLogger.error(`File monitoring for: ${id} aborted`, error.stack);
+        this.pollLogger.log(`Poll loop for file ${id} stopped`);
       } else {
-        this.pollLogger.error(`Poll loop for file ${id} failed`, error);
+        logError(error, this.pollLogger, `Poll loop for file ${id} failed`);
       }
     }
   }

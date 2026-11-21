@@ -9,6 +9,7 @@ import { dataSourceOptions } from './data-source.js';
 import { ServerModule } from './server/server.module.js';
 import { ConfigModule } from '@nestjs/config';
 import { SshModule } from './ssh/ssh.module.js';
+import { MessagesModule } from './messages/messages.module.js';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { SshModule } from './ssh/ssh.module.js';
     LogFileModule,
     ServerModule,
     SshModule,
+    MessagesModule,
   ],
   controllers: [AppController],
   providers: [
