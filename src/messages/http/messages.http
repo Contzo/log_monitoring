@@ -1,0 +1,12 @@
+@host = http://localhost:3000
+
+
+### Get all the stored messages
+GET {{host}}/messages/
+Content-Type: application/json
+
+### Get all the server
+GET {{host}}/messages/99999
+Content-Type: application/json
+
+

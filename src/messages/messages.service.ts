@@ -1,8 +1,9 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { Message } from "./message.entity.js";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, EntityManager } from "typeorm";
 import { type ParsedLine } from "../poll/parse-lines.js";
+import { MessagesQueryDTO } from "./dtos/messages-query.dto.js";
 
 @Injectable()
 export class MessagesService {
@@ -11,6 +12,21 @@ export class MessagesService {
   /*//////////////////////////////////////////////////////////////
                          Public methods
 //////////////////////////////////////////////////////////////*/
+  async findOne(id: number) {
+    const message = await this.messageRepository.findOne({ where: { id } });
+    if (!message) throw new NotFoundException(`Message with id: ${id} not found`);
+    return message;
+  }
+
+  async find(query: MessagesQueryDTO) {
+    const qb = this.messageRepository.createQueryBuilder("message");
+
+    if (query.logFileId !== undefined) {
+      qb.where("message.logFileId = :logFileId", { logFileId: query.logFileId });
+    }
+
+    return qb.getMany();
+  }
   async insertBatch(
     logFileId: number,
     generation: number,
