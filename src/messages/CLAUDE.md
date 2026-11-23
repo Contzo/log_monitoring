@@ -12,16 +12,16 @@ Notes on the message read API. The root `CLAUDE.md` rules still apply (learning 
   - Offset gets slower deeper in.
   - `id` is auto-increment and assigned in the poller's insert, so id order is storage order. More reliable than `createdAt`, where a catch-up batch shares nearly the same timestamp.
   - If sorting by a non-unique column later, add `id` as a tie-breaker.
-- **Response shape (planned):** an envelope, items plus `nextCursor` (`null` on the last page), not a bare array. Fetch `limit + 1` rows to know whether a next page exists; avoid `COUNT(*)` (expensive on a big table; make a total optional if the UI wants it).
+- **Response shape (done):** an envelope, items plus `nextCursor` (`null` on the last page), not a bare array. Fetch `limit + 1` rows; `hasMore = rows.length > limit`; trim with `slice`; `nextCursor` is the last kept row's id only when `hasMore`. Avoid `COUNT(*)` (expensive on a big table; make a total optional if the UI wants it).
+- **Names vs ids (decided):** the messages query takes ids. The UI gets names from a separate lookup endpoint (servers with their log files nested: ids, names, enabled state, later connection status) and builds the URL from the ids. Names are not stable or unique keys, and resolving them per query would slow the hot path.
 - **Empty result is 200 with an empty list, not 404.** 404 is for a missing single resource (`/messages/99999`).
 - **Relations are not loaded by default.** A message returns `logFileId` only. Don't load the log file / server for list endpoints (repeated per row); load relations only where an endpoint needs them. Avoid `eager: true`.
 
 ## Planned filters
 
-- `logFileId` (done in the service).
-- `limit` (default e.g. 50, max 150) and `before` (cursor): in the DTO, not yet applied in the service.
-- `serverId`: needs a join through `logFile` (Message has no `serverId`).
-- `from` / `to`: ISO 8601 UTC, half-open range `[from, to)`.
+- `logFileId`, `limit` (max 150), `before` (cursor): done in the service.
+- `from` / `to`: done. ISO 8601 UTC, half-open range `[from, to)` on `createdAt`; each bound is independent; 400 if both are given and `from > to`; converted with `@Type(() => Date)` + `@IsDate()`.
+- `serverId`: needs a join through `logFile` (Message has no `serverId`). Only add it if the UI needs "all logs of a server".
 - `q` text search: `LIKE '%..%'` is fine at first (no index helps it; table scan). Escape `%` and `_` in user input; always bind as a parameter. Postgres `pg_trgm` can index it later.
 - Indexes should follow the real queries, e.g. `(logFileId, id)` for "this file, newest first, before id X". Ties into open decision 7 in the root CLAUDE.md.
 
@@ -46,24 +46,37 @@ Notes on the message read API. The root `CLAUDE.md` rules still apply (learning 
 - Debugging: `getSql()` shows the SQL without running it; `logging: true` on the data source prints every query (too noisy to leave on).
 - TypeORM ignores `undefined` values in a `where` object: convenient for reads, dangerous for updates/deletes (a missing filter matches every row).
 
-## Current state (2026-11-22)
+## Entity notes (`message.entity.ts`)
 
-- `GET /messages/:id`: uses `ParseIntPipe`; service awaits `findOne` and throws 404 when missing. Done.
-- `messages.service.ts` `find(query)`: alias `message`, conditional `logFileId` filter, `getMany()`. No order, limit or `before` yet.
-- `messages.controller.ts` `find`: still calls `this.messageService.find()` **without passing `query`** (compile error now that `find` takes it), and uses `console.log` (switch to `Logger.debug` with a template string).
-- `ValidationPipe` still has only `whitelist: true` (no `transform`).
-- DTO: `limit` and `before` lack the `?` in their TS types; no default for `limit` yet.
+- Date property is `createdAt` (received-at), `text` is the content column, `id` is a 32-bit auto-increment int (bigint PK still open).
+- `onDelete: "CASCADE"` on the log file relation (decided).
+- Existing unique index `(logFile, generation, startOffset)` starts with `logFileId` but is not ordered by `id`, so it does not serve "file, newest first". Add `(logFileId, id)`; add `createdAt` indexes only when date-range queries need them. Postgres needs a migration for each.
+- SQLite (dev) stores `createdAt` as text without milliseconds while Date parameters may be bound with milliseconds: a row exactly on a `from` boundary may be missed in dev. Verify; Postgres compares real timestamps and is not affected.
+
+## Current state (2026-11-23)
+
+- `GET /messages/:id`: `ParseIntPipe`, 404 when missing. Done.
+- `GET /messages`: service `find` is done (filters `logFileId`, `before`, `from`, `to`; order `id` DESC; `limit + 1`; envelope with `nextCursor`).
+- DTO has `?` on optional fields, `@Type(() => Date)` for `from`/`to`, and `limit` defaults to **2 (testing value; change to e.g. 50)**.
+- `ValidationPipe` (`app.module.ts`) has `whitelist: true` and `transform: true`.
+- Controller passes `query` to the service but still uses `console.log` (switch to the class `Logger` with a template string).
+- `http/messages.http` has only two requests; the cases below are not added yet.
 
 ## Next steps
 
-1. Pass `query` from the controller; replace `console.log` with the class `Logger`.
-2. Enable `transform: true`; add `?` and a default `limit`.
-3. In the service: order by `message.id` DESC, `andWhere` for `before`, take `limit + 1`, return the envelope with `nextCursor`.
-4. Add a `MessageDto` and run responses through the existing serialize interceptor.
-5. Test cases for `http/messages.http`:
-   - `/messages`: 200, newest 50.
-   - `?limit=5&before=10`: ids below 10.
-   - `?limit=abc`, `12abc`, `1.5`, `500`, `limit=1&limit=2`: 400.
-   - `?logFileId=999`: 200 with an empty list.
-   - `?foo=bar`: dropped (or 400 with `forbidNonWhitelisted`).
-6. Then: `from`/`to`, `serverId` (join), `q`; then indexes.
+1. Set the real default `limit`; replace `console.log` with `Logger.debug`.
+2. Add the test requests to `http/messages.http` (see below).
+3. Add the `(logFileId, id)` index (and a migration for Postgres).
+4. Build the servers/log-files lookup endpoint for the UI.
+5. Add a `MessageDto` and run responses through the existing serialize interceptor.
+6. Then: `serverId` (join, only if needed), `q`, a `createdAt` index if needed.
+
+## Test requests for `http/messages.http`
+
+- `/messages`: 200, newest `limit` rows.
+- `?limit=5&before=10`: ids below 10.
+- `?limit=abc`, `12abc`, `1.5`, `0`, `500`, `limit=1&limit=2`: 400.
+- `?logFileId=999`: 200, empty list, `nextCursor: null`.
+- Paging to the end: follow `nextCursor` until it is `null`; the last page must not crash.
+- `?from=...` only, `?to=...` only, both, `from` after `to` (400), `from` equal to `to` (empty list), `from=abc` (400).
+- `?foo=bar`: dropped (or 400 with `forbidNonWhitelisted`).

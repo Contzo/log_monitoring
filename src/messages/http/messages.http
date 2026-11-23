@@ -5,8 +5,33 @@
 GET {{host}}/messages/
 Content-Type: application/json
 
-### Get all the server
+### Get a message
 GET {{host}}/messages/99999
 Content-Type: application/json
 
+### Get  all the messages from 
+GET {{host}}/messages?from=2026-11-10T00:00:00Z
+Content-Type: application/json
+
+### To only
+GET {{host}}/messages?to=2026-11-23T12:00:00Z
+Content-Type: application/json
+### Both bounds
+GET {{host}}/messages?from=2026-11-23T00:00:00Z&to=2026-11-23T12:00:00Z&limit=10
+
+### From after to (expect 400)
+GET {{host}}/messages?from=2026-11-24T00:00:00Z&to=2026-11-23T00:00:00Z
+
+### Bad date (expect 400)
+GET {{host}}/messages?from=abc
+
+### Bad limit (expect 400)
+GET {{host}}/messages?limit=0
+
+### Unknown file (expect 200, empty list, null cursor)
+GET {{host}}/messages?logFileId=999
+
+### Get all the messages from a server
+GET {{host}}/messages?serverId=1
+Content-Type: application/json
 

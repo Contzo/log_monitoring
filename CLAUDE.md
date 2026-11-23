@@ -92,10 +92,10 @@ An earlier idea was a push script on the monitored server. That was dropped beca
 - **Server:** config + connection status (`lastSuccessAt`, `lastErrorAt`, `lastError`).
 - **LogFile:** belongs to a server (`serverId`, `onDelete: CASCADE`), unique `(server, logPath)`, `isEnabled`, and the cursor: `inode` (nullable string, compared for equality only), `byteOffset` (bigint with `bigintToNumber`), `generation` (to add; starts at 0, +1 on every reset).
 - **Message** (in progress, `src/messages/message.entity.ts`):
-  - explicit `logFileId` FK column (like `LogFile.serverId`), not nullable; `onDelete` behaviour still to decide (CASCADE vs block).
+  - explicit `logFileId` FK column (like `LogFile.serverId`), not nullable; `onDelete: "CASCADE"` (decided: deleting a log file deletes its messages).
   - `generation` and `startOffset` (bigint with `bigintToNumber`: offsets pass 2.1 billion once a file is over 2 GB; Postgres returns bigint as a string).
   - content as `text` (one decoded line).
-  - received-at timestamp (`timestamptz`, `@CreateDateColumn`): when the poller stored it, used for time ranges, live view and retention. After downtime, catch-up gives many lines nearly the same timestamp, so the true order within a file is `(generation, startOffset)`. A timestamp parsed from the line itself would be a separate column (open decision 6).
+  - received-at timestamp (property `createdAt`, `@CreateDateColumn`; `timestamptz` on Postgres): when the poller stored it, used for time ranges, live view and retention. After downtime, catch-up gives many lines nearly the same timestamp, so the true order within a file is `(generation, startOffset)`. A timestamp parsed from the line itself would be a separate column (open decision 6).
   - Unique index `(logFileId, generation, startOffset)`.
   - Index for time-range queries: received-at, or `(logFileId, receivedAt)` if queries mostly filter by file.
   - Consider a bigint primary key if volume gets high.
@@ -121,7 +121,7 @@ An earlier idea was a push script on the monitored server. That was dropped beca
 4. **First connection behavior:** backfill the existing file from the beginning, or start from "now"?
 5. **Poll interval** (1 to 3 s feels live) and the **max bytes per poll** cap.
 6. **Log line format:** raw text vs parsing into structured fields (timestamp, level, text); confirm one message per line.
-7. **Schema details (remaining):** the cursor lives on `LogFile` and the message key is decided (see Database). Still open: `Message` `onDelete`, the exact time index, the bigint primary key, and the meaning of `lastSuccessAt`/`lastError`.
+7. **Schema details (remaining):** the cursor lives on `LogFile` and the message key is decided (see Database). `Message` `onDelete` is decided (CASCADE). Still open: the indexes (`(logFileId, id)` first, then a `createdAt` one if date-range queries need it), the bigint primary key (`Message.id` is currently a 32-bit int), and the meaning of `lastSuccessAt`/`lastError`.
 8. **Retention:** how long messages are kept; archiving or partitioning if needed.
 9. **Credential management** for SSH keys in config/Docker, and **authentication** for the web UI/API if needed.
 10. **Monorepo vs separate folders** for backend and frontend.

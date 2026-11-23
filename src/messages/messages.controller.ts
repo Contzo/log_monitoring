@@ -16,7 +16,6 @@ export class MessagesController {
   // ── GET /messages - get all the messages ─
   @Get()
   find(@Query() query: MessagesQueryDTO) {
-    console.log("Qerry params: ", query);
-    return this.messageService.find();
+    return this.messageService.find(query);
   }
 }
