@@ -7,7 +7,7 @@ import { type ExecResult } from "./exec-result.js";
 import { ServerService } from "../server/server.service.js";
 import { Server } from "../server/server.entity.js";
 
-export type SshConfig = Pick<ConnectConfig, "host" | "port" | "username" | "password">;
+export type SshConfig = Pick<ConnectConfig, "host" | "port" | "username">;
 
 @Injectable()
 export class SshService implements OnApplicationShutdown {
@@ -86,6 +86,7 @@ export class SshService implements OnApplicationShutdown {
 //////////////////////////////////////////////////////////////*/
   private async connect(serverId: number, config: SshConfig): Promise<Client> {
     const knownHosts = await readFile(this.config.getOrThrow<string>("KNOWN_HOSTS_PATH"), "utf8");
+    const privateKey = await readFile(this.config.getOrThrow<string>("SSH_PRIVATE_KEY"), "utf8");
     return new Promise((resolve, reject) => {
       const client = new Client();
       let hostKeyRejected = false;
@@ -109,6 +110,7 @@ export class SshService implements OnApplicationShutdown {
 
       client.connect({
         ...config,
+        privateKey,
         readyTimeout: 10_000,
         keepaliveInterval: 10_000,
         keepaliveCountMax: 3,

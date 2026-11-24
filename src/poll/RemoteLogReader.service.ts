@@ -49,7 +49,6 @@ export class RemoteLogReaderService {
 //////////////////////////////////////////////////////////////*/
   private getSshConfigFromLogFile(logFile: LogFile): SshConfig {
     return {
-      password: logFile.server.password,
       username: logFile.server.sshUser,
       port: logFile.server.sshPort,
       host: logFile.server.serverIp,

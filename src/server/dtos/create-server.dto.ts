@@ -11,10 +11,6 @@ export class CreateServerDTO {
 
   @IsString()
   @IsNotEmpty()
-  password: string;
-
-  @IsString()
-  @IsNotEmpty()
   sshUser: string;
 
   @IsNumber()

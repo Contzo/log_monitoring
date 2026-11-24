@@ -18,15 +18,18 @@ export class LogFileService {
   ) {}
 
   async create(newLogFile: CreateLogFileDto) {
-    const { serverName, ...fields } = newLogFile;
-    const relatedServer = await this.serverService.findOneOrFail(serverName);
+    const { serverId, ...fields } = newLogFile;
+    const relatedServer = await this.serverService.findOne(serverId);
     const entity = this.logFileRepository.create(fields);
     entity.server = relatedServer;
     try {
       const newLogFile = await this.logFileRepository.save(entity);
       return newLogFile;
     } catch (error) {
-      handleDbError(error, `File ${fields.logPath} already monitored on server ${serverName}`);
+      handleDbError(
+        error,
+        `File ${fields.logPath} already monitored on server ${relatedServer.serverName}`,
+      );
     }
   }
 

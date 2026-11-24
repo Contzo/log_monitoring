@@ -6,7 +6,7 @@ POST {{host}}/log-file
 sontent-Type: application/json
 
 {
-  "logPath": "/root/log_file/test_file.txt" ,
+  "logPath": "/var/log/test_log.txt" ,
   "serverName": "nms_ciurel"
 }
 
@@ -19,12 +19,12 @@ POST {{host}}/log-file
 sontent-Type: application/json
 
 {
-  "logPath": "/root/log_file/test_file.txt" ,
+  "logPath": "/var/log/test_log.txt" ,
   "serverName": "nms_sabareni"
 }
 
 ### Enable log file monitoring
-PATCH {{host}}/log-file/enable/2
+PATCH {{host}}/log-file/enable/3
 sontent-Type: application/json
 
 ### Disable log file monitoring

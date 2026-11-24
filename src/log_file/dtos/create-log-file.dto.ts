@@ -1,10 +1,10 @@
-import { IsString, IsNotEmpty } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber } from "class-validator";
 export class CreateLogFileDto {
   @IsString()
   @IsNotEmpty()
   logPath: string;
 
   @IsNotEmpty()
-  @IsString()
-  serverName: string;
+  @IsNumber()
+  serverId: number;
 }

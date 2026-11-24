@@ -4,6 +4,7 @@
 /build
 /log_files/nms_ciurel
 /log_files/nms_sabareni
+known_hosts.txt
 
 # TypeScript build cache
 *.tsbuildinfo

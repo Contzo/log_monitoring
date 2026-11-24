@@ -27,9 +27,6 @@ export class Server {
   @Column()
   sshPort: number;
 
-  @Column()
-  password: string;
-
   // ── Poller status (written by the poll loop) ──
   @Column({ type: Date, nullable: true })
   lastSuccessAt: Date | null;

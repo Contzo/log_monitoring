@@ -8,8 +8,7 @@ Content-Type: application/json
 {
   "serverName": "nms_ciurel", 
   "serverIp": "127.0.0.1", 
-  "password": "test",
-  "sshUser": "root", 
+  "sshUser": "logmon", 
   "sshPort": 2222
 }
 ### Add server 2
@@ -19,8 +18,7 @@ Content-Type: application/json
 {
   "serverName": "nms_sabareni", 
   "serverIp": "127.0.0.2", 
-  "password": "test",
-  "sshUser": "root", 
+  "sshUser": "logmon", 
   "sshPort": 2223
 }
 
