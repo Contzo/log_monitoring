@@ -6,10 +6,10 @@ POST {{host}}/server
 Content-Type: application/json
 
 {
-  "serverName": "nms_ciurel", 
-  "serverIp": "127.0.0.1", 
+  "serverName": "nms_virtual", 
+  "serverIp": "127.0.0.3", 
   "sshUser": "logmon", 
-  "sshPort": 2222
+  "sshPort": 2224
 }
 ### Add server 2
 POST {{host}}/server
@@ -27,3 +27,164 @@ GET {{host}}/server
 Content-Type: application/json
 
 
+### Test server conneciton
+GET {{host}}/server/test-connection/1
+Content-Type: application/json
+
+### Delete server with a given id 
+DELETE {{host}}/server/1
+Content-Type: application/json
+
+
+###############################################################
+# Validation and error cases (run with servers 1 and 2 existing)
+###############################################################
+
+### Get one server -> 200, includes sshUser, sshPort and status fields
+GET {{host}}/server/1
+
+### Get one server, unknown id -> 404
+GET {{host}}/server/9999
+
+### Get one server, id is not a number -> 400 (ParseIntPipe)
+GET {{host}}/server/abc
+
+### Add server with a duplicate name or IP -> 409
+POST {{host}}/server
+Content-Type: application/json
+
+{
+  "serverName": "nms_ciurel",
+  "serverIp": "127.0.0.1",
+  "sshUser": "logmon",
+  "sshPort": 2222
+}
+
+### Add server with port 0 -> 400
+POST {{host}}/server
+Content-Type: application/json
+
+{
+  "serverName": "bad_port_zero",
+  "serverIp": "127.0.0.9",
+  "sshUser": "logmon",
+  "sshPort": 0
+}
+
+### Add server with port above 65535 -> 400
+POST {{host}}/server
+Content-Type: application/json
+
+{
+  "serverName": "bad_port_high",
+  "serverIp": "127.0.0.9",
+  "sshUser": "logmon",
+  "sshPort": 70000
+}
+
+### Add server with a non-integer port -> 400
+POST {{host}}/server
+Content-Type: application/json
+
+{
+  "serverName": "bad_port_float",
+  "serverIp": "127.0.0.9",
+  "sshUser": "logmon",
+  "sshPort": 1.5
+}
+
+###############################################################
+# Update
+###############################################################
+
+### Rename only -> 200, cached SSH connection is NOT closed (check the logs)
+PATCH {{host}}/server/1
+Content-Type: application/json
+
+{
+  "serverName": "nms_ciurel_renamed"
+}
+
+### Change the port -> 200, cached SSH connection IS closed (check the logs)
+PATCH {{host}}/server/1
+Content-Type: application/json
+
+{
+  "sshPort": 2222
+}
+
+### Update with a negative port -> 400
+PATCH {{host}}/server/1
+Content-Type: application/json
+
+{
+  "sshPort": -3
+}
+
+### Update with a non-integer port -> 400
+PATCH {{host}}/server/1
+Content-Type: application/json
+
+{
+  "sshPort": 1.5
+}
+
+### Update with a name that already exists (server 2's name) -> 409
+PATCH {{host}}/server/1
+Content-Type: application/json
+
+{
+  "serverName": "nms_sabareni"
+}
+
+### Update an unknown server -> 404
+PATCH {{host}}/server/9999
+Content-Type: application/json
+
+{
+  "serverName": "ghost"
+}
+
+###############################################################
+# Test connection
+###############################################################
+
+### Test connection, unknown server -> 404
+GET {{host}}/server/test-connection/9999
+
+### Test connection, unreachable server -> 200 with ok: false and the error message
+# First point a server at a port with nothing listening, then test it.
+PATCH {{host}}/server/2
+Content-Type: application/json
+
+{
+  "sshPort": 2223
+}
+
+###
+GET {{host}}/server/test-connection/2
+
+### Restore server 2
+PATCH {{host}}/server/2
+Content-Type: application/json
+
+{
+  "sshPort": 2223
+}
+
+###############################################################
+# Delete (run last)
+###############################################################
+
+### Delete a server that has stored messages -> 409, connection stays open
+# Server 1 has messages once the poller has run against it.
+DELETE {{host}}/server/1
+
+### Delete a server with no messages -> 204, empty body
+DELETE {{host}}/server/3
+
+### Delete the same server again -> 404
+DELETE {{host}}/server/3
+
+### Delete, id is not a number -> 400
+DELETE {{host}}/server/abc

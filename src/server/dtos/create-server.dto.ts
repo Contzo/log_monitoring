@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsIP, IsNumber } from "class-validator";
+import { IsString, IsNotEmpty, IsIP, IsInt, Min, Max } from "class-validator";
 
 export class CreateServerDTO {
   @IsString()
@@ -13,7 +13,9 @@ export class CreateServerDTO {
   @IsNotEmpty()
   sshUser: string;
 
-  @IsNumber()
+  @IsInt()
   @IsNotEmpty()
+  @Min(1)
+  @Max(65535)
   sshPort: number;
 }

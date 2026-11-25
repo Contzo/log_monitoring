@@ -1,18 +1,20 @@
-import { IsString, IsIP, IsOptional, IsNumber } from "class-validator";
+import { IsString, IsIP, IsOptional, IsInt, Min, Max } from "class-validator";
 export class UpdateServerDto {
   @IsIP()
   @IsOptional()
-  ipAddress?: string;
+  serverIp?: string;
 
   @IsString()
   @IsOptional()
-  name?: string;
+  serverName?: string;
 
   @IsString()
   @IsOptional()
-  user?: string;
+  sshUser?: string;
 
-  @IsNumber()
   @IsOptional()
-  port?: number;
+  @IsInt()
+  @Min(1)
+  @Max(65535)
+  sshPort?: number;
 }

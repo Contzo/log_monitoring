@@ -4,10 +4,14 @@ import { isKnownHostKey } from "./known-keys.js";
 import { readFile } from "node:fs/promises";
 import { ConfigService } from "@nestjs/config";
 import { type ExecResult } from "./exec-result.js";
-import { ServerService } from "../server/server.service.js";
 import { Server } from "../server/server.entity.js";
+import { Repository } from "typeorm";
+import { InjectRepository } from "@nestjs/typeorm";
 
 export type SshConfig = Pick<ConnectConfig, "host" | "port" | "username">;
+type UpdateServerStateType = Partial<
+  Pick<Server, "updatedAt" | "lastSuccessAt" | "lastErrorAt" | "lastError">
+>;
 
 @Injectable()
 export class SshService implements OnApplicationShutdown {
@@ -16,7 +20,7 @@ export class SshService implements OnApplicationShutdown {
 
   constructor(
     private readonly config: ConfigService,
-    private readonly serverService: ServerService,
+    @InjectRepository(Server) private readonly serverRepository: Repository<Server>,
   ) {}
 
   getServerConnection(serverId: number, config: SshConfig): Promise<Client> {
@@ -122,13 +126,33 @@ export class SshService implements OnApplicationShutdown {
       });
     });
   }
-  private async updateServer(id: number, args: Partial<Server>) {
+
+  private async updateServer(id: number, attrs: UpdateServerStateType) {
     try {
-      await this.serverService.update(id, args);
+      const result = await this.serverRepository.update(id, attrs);
+      if (result.affected === 0) {
+        this.sshLoger.warn(`Server ${id} not found when updating its state`);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       const stack = error instanceof Error ? error.stack : undefined;
       this.sshLoger.error(`Failed to update server ${id}: ${message}`, stack);
+    }
+  }
+
+  async closeConnection(id: number) {
+    const attempt = this.serverConnections.get(id);
+    if (!attempt) return;
+
+    this.serverConnections.delete(id);
+
+    try {
+      const client = await attempt;
+      client.end();
+      this.sshLoger.log(`Closed connection to server: ${id}`);
+    } catch {
+      // The attempt had failed, so there is no client to close.
+      // The connect path already logged and recorded that error.
     }
   }
 }

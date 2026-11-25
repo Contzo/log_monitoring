@@ -1,4 +1,4 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { setTimeout } from "timers/promises";
 import { LogFileService } from "../log_file/log_file.service.js";
 import { RemoteLogReaderService } from "./RemoteLogReader.service.js";
@@ -28,7 +28,7 @@ export class PollService {
   ) {
     this.loops = new Map();
   }
-  async poolCycle(id: number) {
+  async poolCycle(id: number): Promise<"continue" | "stop"> {
     try {
       const logFile = await this.logFileService.findOneWithServer(id);
       const { inode, size } = await this.remoteLogReaderService.getRemoteLogStat(logFile);
@@ -36,7 +36,7 @@ export class PollService {
         { inode: logFile.inode, offset: logFile.byteOffset },
         { inode, size },
       );
-      if (cursorDecision.kind === `nothing`) return;
+      if (cursorDecision.kind === `nothing`) return "continue";
       this.pollLogger.debug(`Cursor Decision: ${cursorDecision.kind}`);
       const generation =
         cursorDecision.kind === "reset" ? logFile.generation + 1 : logFile.generation;
@@ -61,8 +61,14 @@ export class PollService {
           `Cursor reset for file ${id} (${logFile.logPath}): now generation ${generation}`,
         );
       }
+      return "continue";
     } catch (error) {
+      if (error instanceof NotFoundException) {
+        this.pollLogger.warn(`Log file ${id} no longer exists, stopping its loop`);
+        return "stop";
+      }
       logError(error, this.pollLogger, `Poll cycle for file ${id} failed`);
+      return "continue";
     }
   }
 
@@ -79,7 +85,8 @@ export class PollService {
     const { signal } = abortController;
     try {
       while (!signal.aborted) {
-        await this.poolCycle(id);
+        const result = await this.poolCycle(id);
+        if (result === "stop") return;
         await setTimeout(1000, undefined, { signal });
       }
     } catch (error) {
